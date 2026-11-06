@@ -19,6 +19,9 @@ function isActive(pathname: string, href: string): boolean {
 export function NavLinks() {
   const pathname = usePathname();
 
+  // 로그인 화면에서는 이동할 수 없는 탭을 보여 주지 않는다.
+  if (pathname === "/login") return null;
+
   return (
     <>
       {NAV_LINKS.map(({ href, label }) => {

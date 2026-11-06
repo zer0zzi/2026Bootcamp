@@ -14,20 +14,45 @@
 
 ## 기술 스택
 
-Next.js 15 (App Router) · TypeScript · Tailwind CSS · Prisma + SQLite · Zod · Vitest
+Next.js 15 (App Router) · TypeScript · Tailwind CSS · Prisma + PostgreSQL(Neon) · Zod · Vitest
 
-## 실행
+## 실행 (로컬 개발)
 
-Node.js 22.12 이상이 필요합니다.
+Node.js 22.12 이상이 필요합니다. 데이터베이스는 [Neon](https://neon.tech)의 무료 Postgres를 씁니다.
+로컬 개발에는 **배포용과 다른 개발용 브랜치(데이터베이스)** 를 만들어 쓰세요. 같은 DB를 쓰면 개발 중 만든
+테스트 데이터가 실제 데이터와 섞입니다.
 
 ```bash
 npm install
-npx prisma migrate dev   # SQLite DB 생성
+cp .env.example .env     # DATABASE_URL 등을 채운다 (아래 환경 변수 표 참고)
+npx prisma migrate dev   # 테이블 생성
 npm run dev              # http://localhost:3000
 npm test                 # 단위 테스트
 ```
 
+로컬에서는 `APP_PASSWORD`와 `AUTH_SECRET`을 비워 두면 로그인 없이 쓸 수 있습니다.
+
 > `npm run build`는 개발 서버를 끈 상태에서 실행하세요. 둘이 `.next` 폴더를 공유해 캐시가 꼬일 수 있습니다.
+
+## 환경 변수
+
+| 이름 | 설명 |
+| --- | --- |
+| `DATABASE_URL` | 앱이 쓰는 Postgres 연결 주소 (Neon의 풀링 주소) |
+| `DATABASE_URL_UNPOOLED` | 마이그레이션이 쓰는 직접 연결 주소 |
+| `APP_PASSWORD` | 사이트에 들어갈 때 입력하는 비밀번호 |
+| `AUTH_SECRET` | 로그인 쿠키 서명용 비밀 값 (`openssl rand -base64 32`) |
+
+## Vercel 배포
+
+1. 저장소를 GitHub에 올린다.
+2. Vercel에서 **Add New → Project**로 그 저장소를 가져온다. Framework는 Next.js로 자동 인식된다.
+3. 프로젝트의 **Storage** 탭에서 **Neon**을 연결한다. `DATABASE_URL`, `DATABASE_URL_UNPOOLED`가 환경 변수에 자동으로 들어간다.
+4. **Settings → Environment Variables**에 `APP_PASSWORD`, `AUTH_SECRET`을 추가한다.
+5. 배포한다. 빌드 때 `vercel-build` 스크립트가 `prisma migrate deploy`로 테이블을 만든 뒤 앱을 빌드한다.
+
+`APP_PASSWORD`와 `AUTH_SECRET` 중 하나라도 빠지면 사이트는 열리지 않고 503 오류를 돌려줍니다.
+설정 실수로 가계부가 공개되는 것을 막기 위한 동작입니다.
 
 ## 구조
 
@@ -40,8 +65,10 @@ src/lib/                    도메인 로직. 화면·DB와 분리된 순수 함
   stats.ts                  월 요약, 카테고리 집계, 예산 현황, 추이, 일별 합계, 월말 예상
   transactionFilter.ts      내역 필터·검색·카테고리별 그룹핑, URL 쿼리 해석
   csv.ts                    CSV 변환 (엑셀 한글 BOM, 따옴표 이스케이프)
+  auth.ts                   세션 토큰 서명·검증, 비밀번호 비교, 리다이렉트 경로 검증
   transactions.ts, budgets.ts   DB 접근 (Prisma)
-src/app/api/                transactions, transactions/[id], budgets
+src/middleware.ts           모든 요청의 로그인 검사
+src/app/api/                transactions, transactions/[id], budgets, login, logout
 src/app/                    메인, 내역, 입력/수정, 달력, 예산 페이지
 src/components/             화면 컴포넌트
 ```
@@ -60,5 +87,9 @@ src/components/             화면 컴포넌트
   카테고리나 달력의 날짜를 누르면 해당 조건의 내역으로 바로 이동합니다.
 - **날짜는 로컬 시간 기준 문자열(YYYY-MM-DD)** 로 다룹니다. `toISOString()`은 UTC라 자정 무렵에
   하루가 어긋날 수 있어 쓰지 않습니다.
-- **DB 모델 이름을 바꿀 때 데이터를 옮기지 않았습니다.** 기존 `Receipt`/`ReceiptItem` 테이블은
-  `@@map`/`@map`으로 그대로 두고 코드의 이름만 `Transaction`/`TransactionItem`으로 바꿨습니다.
+- **비밀번호 한 개로 앱 전체를 보호합니다.** 로그인하면 서명된 토큰을 `httpOnly` 쿠키에 담고, 미들웨어가
+  화면과 API 요청을 모두 검사합니다. 서명 비교는 상수 시간 연산을 쓰고, `?next=` 로 돌아갈 경로는 같은 사이트
+  안의 경로만 허용합니다(open redirect 방지).
+- **설정 실수는 "열어 두는" 대신 "막는" 쪽으로 실패합니다.** 배포 환경에서 인증 환경 변수가 없으면 503을 돌려줍니다.
+- **한계:** 단일 사용자용 간이 인증입니다. 로그인 시도 횟수 제한은 틀렸을 때 지연을 두는 정도이고,
+  여러 사용자나 계정 관리가 필요하면 Auth.js 같은 인증 라이브러리로 옮겨야 합니다.
