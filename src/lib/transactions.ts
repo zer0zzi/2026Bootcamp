@@ -1,5 +1,7 @@
 import type { Category, PaymentMethod, TransactionType } from "./categories";
 import { prisma } from "./db";
+import { assertWritable, isDemoMode } from "./demo";
+import { createDemoTransactions } from "./demoData";
 import type { SavedTransaction, TransactionInput } from "./schemas";
 
 const withItems = { items: { orderBy: { id: "asc" as const } } };
@@ -36,6 +38,8 @@ const sumOfItems = (items: TransactionInput["items"]) =>
 
 /** 모든 거래를 최신 날짜순으로 조회한다. */
 export async function listTransactions(): Promise<SavedTransaction[]> {
+  if (isDemoMode()) return createDemoTransactions();
+
   const rows = await prisma.transaction.findMany({
     include: withItems,
     orderBy: [{ date: "desc" }, { id: "desc" }],
@@ -44,11 +48,14 @@ export async function listTransactions(): Promise<SavedTransaction[]> {
 }
 
 export async function getTransaction(id: number): Promise<SavedTransaction | null> {
+  if (isDemoMode()) return createDemoTransactions().find((t) => t.id === id) ?? null;
+
   const row = await findRow(id);
   return row ? toSaved(row) : null;
 }
 
 export async function createTransaction({ items, ...data }: TransactionInput): Promise<number> {
+  assertWritable();
   const saved = await prisma.transaction.create({
     data: { ...data, total: sumOfItems(items), items: { create: items } },
   });
@@ -60,6 +67,7 @@ export async function updateTransaction(
   id: number,
   { items, ...data }: TransactionInput,
 ): Promise<boolean> {
+  assertWritable();
   const exists = await prisma.transaction.count({ where: { id } });
   if (!exists) return false;
 
@@ -75,12 +83,15 @@ export async function updateTransaction(
 
 /** 삭제한다. 없으면 false. 품목은 onDelete: Cascade로 함께 지워진다. */
 export async function deleteTransaction(id: number): Promise<boolean> {
+  assertWritable();
   const { count } = await prisma.transaction.deleteMany({ where: { id } });
   return count > 0;
 }
 
 /** 자동완성용: 최근에 쓴 상호/내용을 중복 없이 최대 limit개 돌려준다. */
 export async function listRecentTitles(limit = 30): Promise<string[]> {
+  if (isDemoMode()) return [];
+
   const rows = await prisma.transaction.findMany({
     select: { title: true },
     orderBy: { id: "desc" },

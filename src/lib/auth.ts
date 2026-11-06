@@ -5,6 +5,8 @@
  * 미들웨어는 Edge 런타임에서 돌기 때문에 Node 전용 API 대신 Web Crypto만 쓴다.
  */
 
+import { isDemoMode } from "./demo";
+
 export const SESSION_COOKIE = "sw_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30일
 
@@ -14,17 +16,22 @@ type Env = Record<string, string | undefined>;
 
 export type AuthConfig =
   | { state: "disabled" }
+  /** 누구나 볼 수 있는 읽기 전용 데모 (샘플 데이터) */
+  | { state: "demo" }
   | { state: "misconfigured" }
   | { state: "enabled"; password: string; secret: string };
 
 /**
  * 환경 변수로 인증 상태를 정한다.
+ * - DEMO_MODE=true면 로그인 없는 읽기 전용 데모다. 이때 비밀번호 설정이 함께 있으면 "보호된 실제 가계부"와
+ *   "공개 데모" 중 어느 쪽인지 알 수 없으므로, 공개되는 쪽으로 열지 않고 설정 오류로 막는다.
  * - APP_PASSWORD와 AUTH_SECRET이 모두 있으면 인증을 켠다.
  * - 둘 다 없으면 로컬 개발에서만 인증을 끈다. 배포 환경에서 빠뜨리면 "열어 두는" 대신
  *   "막는" 쪽(misconfigured)으로 실패해, 설정 실수로 가계부가 공개되지 않게 한다.
  */
 export function readAuthConfig(env: Env = process.env): AuthConfig {
   const { APP_PASSWORD: password, AUTH_SECRET: secret } = env;
+  if (isDemoMode(env)) return password || secret ? { state: "misconfigured" } : { state: "demo" };
   if (password && secret) return { state: "enabled", password, secret };
   if (!password && !secret && env.NODE_ENV !== "production") return { state: "disabled" };
   return { state: "misconfigured" };

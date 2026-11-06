@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, readAuthConfig, verifySessionToken } from "@/lib/auth";
+import { DEMO_READ_ONLY_MESSAGE } from "@/lib/demo";
 
 /** 로그인 없이 접근할 수 있는 경로 */
 const PUBLIC_PATHS = new Set(["/login", "/api/login", "/api/logout"]);
@@ -10,9 +11,18 @@ export async function middleware(request: NextRequest) {
 
   if (auth.state === "disabled") return NextResponse.next();
 
+  // 데모: 누구나 볼 수 있지만 데이터를 바꾸는 API 요청(POST/PUT/DELETE 등)은 모두 거절한다.
+  if (auth.state === "demo") {
+    const isRead = request.method === "GET" || request.method === "HEAD";
+    if (request.nextUrl.pathname.startsWith("/api/") && !isRead) {
+      return NextResponse.json({ error: DEMO_READ_ONLY_MESSAGE }, { status: 403 });
+    }
+    return NextResponse.next();
+  }
+
   if (auth.state === "misconfigured") {
     return new NextResponse(
-      "서버 설정 오류: APP_PASSWORD와 AUTH_SECRET 환경 변수를 모두 설정해 주세요.",
+      "서버 설정 오류: 로그인을 쓰려면 APP_PASSWORD와 AUTH_SECRET을 모두 설정하고, 공개 데모라면 DEMO_MODE=true만 설정해 주세요.",
       { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } },
     );
   }

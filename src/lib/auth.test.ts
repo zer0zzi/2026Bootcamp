@@ -28,6 +28,22 @@ describe("readAuthConfig", () => {
     expect(readAuthConfig({ NODE_ENV: "production" })).toEqual({ state: "misconfigured" });
   });
 
+  it("DEMO_MODE=true면 로그인 없는 데모 상태다 (배포 환경이어도)", () => {
+    expect(readAuthConfig({ DEMO_MODE: "true", NODE_ENV: "production" })).toEqual({ state: "demo" });
+  });
+
+  it("데모 모드와 비밀번호 설정이 함께 있으면 공개하지 않고 설정 오류로 막는다", () => {
+    expect(readAuthConfig({ DEMO_MODE: "true", APP_PASSWORD: "pw", NODE_ENV: "production" })).toEqual({
+      state: "misconfigured",
+    });
+    expect(readAuthConfig({ DEMO_MODE: "true", AUTH_SECRET: "s" })).toEqual({ state: "misconfigured" });
+  });
+
+  it("DEMO_MODE가 'true'가 아니면 데모로 보지 않는다", () => {
+    expect(readAuthConfig({ DEMO_MODE: "1", NODE_ENV: "production" })).toEqual({ state: "misconfigured" });
+    expect(readAuthConfig({ DEMO_MODE: "false", NODE_ENV: "development" })).toEqual({ state: "disabled" });
+  });
+
   it("하나만 설정돼 있으면 어느 환경이든 설정 오류로 본다", () => {
     expect(readAuthConfig({ APP_PASSWORD: "pw", NODE_ENV: "development" })).toEqual({ state: "misconfigured" });
     expect(readAuthConfig({ AUTH_SECRET: "s", NODE_ENV: "development" })).toEqual({ state: "misconfigured" });
