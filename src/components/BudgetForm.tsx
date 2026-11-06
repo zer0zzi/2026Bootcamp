@@ -17,7 +17,7 @@ function toAmountMap(budgets: SavedBudget[]): Record<string, number> {
 }
 
 /** 월 전체와 카테고리별 예산을 설정한다. 금액을 비우거나 0으로 두면 예산이 해제된다. */
-export function BudgetForm({ budgets }: { budgets: SavedBudget[] }) {
+export function BudgetForm({ budgets, readOnly = false }: { budgets: SavedBudget[]; readOnly?: boolean }) {
   const router = useRouter();
   // 서버에 저장된 값. 이 값과 다른 칸만 저장 요청을 보낸다.
   const [saved, setSaved] = useState(() => toAmountMap(budgets));
@@ -67,6 +67,7 @@ export function BudgetForm({ budgets }: { budgets: SavedBudget[] }) {
                 type="number"
                 min={0}
                 step={1000}
+                disabled={readOnly}
                 placeholder="미설정"
                 className="w-36 rounded border border-gray-300 px-2 py-1 text-right focus:border-blue-500 focus:outline-none"
                 value={amounts[key] === 0 ? "" : amounts[key]}
@@ -90,14 +91,16 @@ export function BudgetForm({ budgets }: { budgets: SavedBudget[] }) {
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={saving || changedKeys.length === 0}
-        className="w-full rounded-lg bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-      >
-        {saving ? "저장 중..." : "예산 저장"}
-      </button>
+      {!readOnly && (
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || changedKeys.length === 0}
+          className="w-full rounded-lg bg-blue-600 px-4 py-3 font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+        >
+          {saving ? "저장 중..." : "예산 저장"}
+        </button>
+      )}
     </div>
   );
 }

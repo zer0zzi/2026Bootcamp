@@ -25,10 +25,12 @@ type Props = {
   transactions: SavedTransaction[];
   /** URL 쿼리(달력, 메인 화면 링크 등)에서 넘어온 처음 필터 */
   initialFilter: TransactionFilter;
+  /** true면 수정·복사·삭제 버튼을 숨긴다 (데모) */
+  readOnly?: boolean;
 };
 
 /** 내역 화면: 필터·검색, 거래별/카테고리별 보기, 삭제, CSV 내보내기 */
-export function TransactionList({ transactions, initialFilter }: Props) {
+export function TransactionList({ transactions, initialFilter, readOnly = false }: Props) {
   const router = useRouter();
   const [filter, setFilter] = useState<TransactionFilter>(initialFilter);
   const [view, setView] = useState<View>("transaction");
@@ -70,9 +72,11 @@ export function TransactionList({ transactions, initialFilter }: Props) {
     return (
       <p className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center text-gray-500">
         저장된 내역이 없습니다.{" "}
-        <Link href="/transactions/new" className="text-blue-600 hover:underline">
-          첫 거래를 입력해 보세요.
-        </Link>
+        {!readOnly && (
+          <Link href="/transactions/new" className="text-blue-600 hover:underline">
+            첫 거래를 입력해 보세요.
+          </Link>
+        )}
       </p>
     );
   }
@@ -146,6 +150,7 @@ export function TransactionList({ transactions, initialFilter }: Props) {
               key={t.id}
               transaction={t}
               deleting={deletingId === t.id}
+              readOnly={readOnly}
               onDelete={handleDelete}
             />
           ))}

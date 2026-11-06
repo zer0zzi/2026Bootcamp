@@ -1,9 +1,13 @@
+import { redirect } from "next/navigation";
 import { LoginForm } from "@/components/LoginForm";
-import { safeNextPath } from "@/lib/auth";
+import { readAuthConfig, safeNextPath } from "@/lib/auth";
 
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export default async function LoginPage({ searchParams }: Props) {
+  // 로그인이 필요 없는 상태(데모, 로컬 개발)에서는 로그인 화면을 보여 줄 이유가 없다.
+  if (readAuthConfig().state !== "enabled") redirect("/");
+
   const { next } = await searchParams;
   const nextPath = safeNextPath(Array.isArray(next) ? next[0] : next);
 

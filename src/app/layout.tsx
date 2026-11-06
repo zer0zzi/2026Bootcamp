@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LogoutButton } from "@/components/LogoutButton";
 import { NavLinks } from "@/components/NavLinks";
 import { readAuthConfig } from "@/lib/auth";
+import { isDemoMode } from "@/lib/demo";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,10 +16,16 @@ export const dynamic = "force-dynamic";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const authEnabled = readAuthConfig().state === "enabled";
+  const demo = isDemoMode();
 
   return (
     <html lang="ko">
       <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
+        {demo && (
+          <p className="bg-amber-100 px-4 py-2 text-center text-sm text-amber-900">
+            데모 모드: 가상의 샘플 데이터이며 읽기만 할 수 있어요.
+          </p>
+        )}
         <header className="border-b border-gray-200 bg-white">
           <nav className="mx-auto flex max-w-4xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-4 text-sm">
             <Link href="/" className="text-base font-bold">

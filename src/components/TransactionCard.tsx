@@ -7,11 +7,12 @@ import type { SavedTransaction } from "@/lib/schemas";
 type Props = {
   transaction: SavedTransaction;
   deleting: boolean;
+  readOnly: boolean;
   onDelete: (transaction: SavedTransaction) => void;
 };
 
 /** 거래 한 건. 펼치면 품목·메모와 수정/복사/삭제 버튼이 보인다. */
-export function TransactionCard({ transaction: t, deleting, onDelete }: Props) {
+export function TransactionCard({ transaction: t, deleting, readOnly, onDelete }: Props) {
   const categories = [...new Set(t.items.map((item) => item.category))];
 
   return (
@@ -48,22 +49,24 @@ export function TransactionCard({ transaction: t, deleting, onDelete }: Props) {
         </ul>
         {t.memo && <p className="mt-2 text-sm text-gray-500">메모: {t.memo}</p>}
 
-        <div className="mt-3 flex gap-3 border-t border-gray-100 pt-3 text-sm">
-          <Link href={`/transactions/${t.id}/edit`} className="text-blue-600 hover:underline">
-            수정
-          </Link>
-          <Link href={`/transactions/new?copy=${t.id}`} className="text-blue-600 hover:underline">
-            복사해서 새로 입력
-          </Link>
-          <button
-            type="button"
-            disabled={deleting}
-            onClick={() => onDelete(t)}
-            className="ml-auto text-red-600 hover:underline disabled:opacity-50"
-          >
-            {deleting ? "삭제 중..." : "삭제"}
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="mt-3 flex gap-3 border-t border-gray-100 pt-3 text-sm">
+            <Link href={`/transactions/${t.id}/edit`} className="text-blue-600 hover:underline">
+              수정
+            </Link>
+            <Link href={`/transactions/new?copy=${t.id}`} className="text-blue-600 hover:underline">
+              복사해서 새로 입력
+            </Link>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => onDelete(t)}
+              className="ml-auto text-red-600 hover:underline disabled:opacity-50"
+            >
+              {deleting ? "삭제 중..." : "삭제"}
+            </button>
+          </div>
+        )}
       </details>
     </li>
   );

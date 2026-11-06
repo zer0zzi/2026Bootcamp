@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { TransactionEditor } from "@/components/TransactionEditor";
+import { isDemoMode } from "@/lib/demo";
 import { todayString } from "@/lib/dates";
 import { copyAsNew, emptyTransaction } from "@/lib/transactionDefaults";
 import { getTransaction, listRecentTitles } from "@/lib/transactions";
@@ -8,6 +10,8 @@ export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 export default async function NewTransactionPage({ searchParams }: Props) {
+  if (isDemoMode()) redirect("/transactions");
+
   const { copy } = await searchParams;
   const copyId = Number(Array.isArray(copy) ? copy[0] : copy);
   const today = todayString();

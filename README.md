@@ -42,17 +42,31 @@ npm test                 # 단위 테스트
 | `DATABASE_URL_UNPOOLED` | 마이그레이션이 쓰는 직접 연결 주소 |
 | `APP_PASSWORD` | 사이트에 들어갈 때 입력하는 비밀번호 |
 | `AUTH_SECRET` | 로그인 쿠키 서명용 비밀 값 (`openssl rand -base64 32`) |
+| `DEMO_MODE` | `true`면 로그인 없는 읽기 전용 샘플 데모 (위 "공개 데모" 참고) |
 
 ## Vercel 배포
 
+같은 저장소로 두 가지 방식의 배포를 만들 수 있습니다.
+
+### A. 공개 데모 (누구나 구경하는 링크)
+
+로그인 없이 누구나 볼 수 있는 **읽기 전용** 사이트입니다. 가상의 샘플 데이터를 보여 주고(접속한 날 기준
+최근 6개월), 저장·수정·삭제는 막혀 있습니다. DB가 필요 없습니다.
+
 1. 저장소를 GitHub에 올린다.
 2. Vercel에서 **Add New → Project**로 그 저장소를 가져온다. Framework는 Next.js로 자동 인식된다.
-3. 프로젝트의 **Storage** 탭에서 **Neon**을 연결한다. `DATABASE_URL`, `DATABASE_URL_UNPOOLED`가 환경 변수에 자동으로 들어간다.
-4. **Settings → Environment Variables**에 `APP_PASSWORD`, `AUTH_SECRET`을 추가한다.
-5. 배포한다. 빌드 때 `vercel-build` 스크립트가 `prisma migrate deploy`로 테이블을 만든 뒤 앱을 빌드한다.
+3. **Environment Variables**에 `DEMO_MODE` = `true` 한 개만 추가한다.
+4. **Deploy**를 누른다.
 
-`APP_PASSWORD`와 `AUTH_SECRET` 중 하나라도 빠지면 사이트는 열리지 않고 503 오류를 돌려줍니다.
-설정 실수로 가계부가 공개되는 것을 막기 위한 동작입니다.
+### B. 내 실제 가계부 (비밀번호 보호)
+
+1. 위와 같이 저장소를 가져오되, **별도의 Vercel 프로젝트**로 만든다. (데모와 섞이지 않게)
+2. **Storage** 탭에서 **Neon**을 연결한다. `DATABASE_URL`, `DATABASE_URL_UNPOOLED`가 자동으로 들어간다.
+3. `APP_PASSWORD`, `AUTH_SECRET`을 추가한다.
+4. 배포한다. 빌드 때 `vercel-build` 스크립트가 `prisma migrate deploy`로 테이블을 만든 뒤 앱을 빌드한다.
+
+설정이 잘못되면 열어 두지 않고 막습니다(503). `APP_PASSWORD`/`AUTH_SECRET` 중 하나만 있거나, 데모 모드와
+비밀번호를 함께 설정한 경우가 그렇습니다. 실제 가계부가 공개되는 설정 실수를 막기 위한 동작입니다.
 
 ## 구조
 
@@ -66,6 +80,7 @@ src/lib/                    도메인 로직. 화면·DB와 분리된 순수 함
   transactionFilter.ts      내역 필터·검색·카테고리별 그룹핑, URL 쿼리 해석
   csv.ts                    CSV 변환 (엑셀 한글 BOM, 따옴표 이스케이프)
   auth.ts                   세션 토큰 서명·검증, 비밀번호 비교, 리다이렉트 경로 검증
+  demo.ts, demoData.ts      데모 모드 판별, 샘플 데이터 생성 (날짜 기준으로 최근 6개월)
   transactions.ts, budgets.ts   DB 접근 (Prisma)
 src/middleware.ts           모든 요청의 로그인 검사
 src/app/api/                transactions, transactions/[id], budgets, login, logout
@@ -91,5 +106,7 @@ src/components/             화면 컴포넌트
   화면과 API 요청을 모두 검사합니다. 서명 비교는 상수 시간 연산을 쓰고, `?next=` 로 돌아갈 경로는 같은 사이트
   안의 경로만 허용합니다(open redirect 방지).
 - **설정 실수는 "열어 두는" 대신 "막는" 쪽으로 실패합니다.** 배포 환경에서 인증 환경 변수가 없으면 503을 돌려줍니다.
+- **공개 데모는 DB가 아니라 코드에서 샘플을 만듭니다.** 실제 데이터와 섞일 일이 없고, 저장된 데이터가 없으니
+  방문자가 망가뜨릴 것도 없습니다. 쓰기 API는 미들웨어가 403으로 막고, 데이터 계층에서도 한 번 더 막습니다.
 - **한계:** 단일 사용자용 간이 인증입니다. 로그인 시도 횟수 제한은 틀렸을 때 지연을 두는 정도이고,
   여러 사용자나 계정 관리가 필요하면 Auth.js 같은 인증 라이브러리로 옮겨야 합니다.

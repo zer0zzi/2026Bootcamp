@@ -6,6 +6,7 @@ import { MonthlyTrend } from "@/components/MonthlyTrend";
 import { RecentTransactions } from "@/components/RecentTransactions";
 import { SummaryCards } from "@/components/SummaryCards";
 import { listBudgets } from "@/lib/budgets";
+import { isDemoMode } from "@/lib/demo";
 import { monthRange, resolveMonth, shiftMonth, todayString } from "@/lib/dates";
 import {
   budgetStatuses,
@@ -37,12 +38,14 @@ export default async function DashboardPage({ searchParams }: Props) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <MonthNav month={month} basePath="/" />
-        <Link
-          href="/transactions/new"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          + 거래 입력
-        </Link>
+        {!isDemoMode() && (
+          <Link
+            href="/transactions/new"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            + 거래 입력
+          </Link>
+        )}
       </div>
 
       <SummaryCards
