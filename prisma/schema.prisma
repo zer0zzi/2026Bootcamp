@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// 기존 Receipt/ReceiptItem 테이블과 컬럼을 그대로 쓰기 위해 @@map/@map으로 이름만 바꿨다.
+// (저장해 둔 데이터를 옮기지 않아도 된다.)
+
+/// 거래 한 건 (영수증 한 장 또는 수입 한 건)
+model Transaction {
+  id            Int               @id @default(autoincrement())
+  /// EXPENSE(지출) | INCOME(수입)
+  type          String            @default("EXPENSE")
+  /// 상호명 또는 거래 내용
+  title         String            @map("merchant")
+  /// 거래 날짜 (YYYY-MM-DD)
+  date          String
+  /// 총액 (품목 가격의 합, 원 단위 정수)
+  total         Int
+  /// 결제수단 (지출에서만 사용, 없으면 빈 문자열)
+  paymentMethod String            @default("")
+  memo          String            @default("")
+  createdAt     DateTime          @default(now())
+  items         TransactionItem[]
+
+  @@map("Receipt")
+}
+
+model TransactionItem {
+  id            Int         @id @default(autoincrement())
+  transactionId Int         @map("receiptId")
+  name          String
+  quantity      Int
+  /// 품목 가격 (수량을 반영한 금액, 원 단위 정수)
+  price         Int
+  /// 품목마다 지정하는 카테고리
+  category      String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("ReceiptItem")
+}
+
+/// 월 예산. category가 "전체"면 월 전체 지출 예산이다.
+model Budget {
+  id       Int    @id @default(autoincrement())
+  category String @unique
+  amount   Int
+}
